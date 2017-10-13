@@ -25,7 +25,10 @@ _handler.setFormatter(_formatter)
 logger.addHandler(_handler)
 
 class Ticker(object):
-    """Keep track of progress"""
+    """
+    Keep track of progress
+    
+    """
 
     def __init__(self, n, interval = 0.1, end=1):
         """Initialize counter"""
@@ -35,6 +38,7 @@ class Ticker(object):
         #logger.debug("Milestones are: {}".format(str(self.milestones)))
     
     def tick(self, i):
+        """Check if iteration advances ticker"""
         if i in self.milestones:
             mile = np.searchsorted(self.milestones, i)
             self.now = mile *10
@@ -50,7 +54,11 @@ class Ticker(object):
         #logger.debug("Reseting, now is {}".format(str(self.now)))    
 
 class Trace(object):
-    """Holder of traces"""
+    """
+    Trace objects contain the traces of variables
+    
+    
+    """
 
     def __init__(self, x0, n):
         """Trace is array with shape (x0.shape,n)"""
@@ -86,7 +94,39 @@ class Trace(object):
 
 class Model(object):
     """
-    Model definitions.
+    Model definitions
+
+    Create Bayesian model object defining the likelihoods and priors.
+    The object includes the methodos to compute the distributions in
+    parallel using the mamuto package.
+
+    Arguments
+    ---------
+
+    p0: numpy array
+        initial positions of parameters
+
+    h0: numpy array
+        initial postions of hyperparameters
+
+    flike: function
+        common likelihood of parameters
+    
+    fprior: function
+        common prior of parameters; also the likelihood of hyperparameters
+
+    fhyprior: function
+        prior of hyperparameters
+
+    data: numpy array
+        observed data. The likelihood of parameters depends on this, in general.
+
+    configfile: string
+        file with cluster configuration that is used by mamuto package
+
+    depends (optional): list of strings
+        list of modules containing the functions, to be passed to mamuto package.
+        Default is None.
     """
     
     def __init__(self, p0, h0, flike, fprior, fhyprior, data, configfile, depends=None):
@@ -221,7 +261,7 @@ class MHBlockUpdates(object):
     def __init__(self, p0, lnlike, lnprior, cov=None):
         self._main_rand = np.random.mtrand.RandomState()
         self.p = p0
-        self.setprob(lnline, lnprior)
+        self.setprob(lnlike, lnprior)
         self.dim = len(self.p)
         if cov:
             self.cov_proposal = cov
@@ -230,7 +270,7 @@ class MHBlockUpdates(object):
         self.chain_mean = np.zeros(self.dim)
         self._trace = []
         self._trace_count = 0
-        #logger.debug("Created block Stepper with parameters p0={}, lnprob={} and cov={}".format(str(p0), str(lnprob), str(cov)))
+        #logger.debug("Created block Stepper with parameters p0={}, lnprob={} and cov={}".format(str(p0), str(self.lnprob), str(cov)))
         #logger.debug("Proposal covariance is now: {}".format(str(self.cov_proposal)))
         #logger.debug("Space dimension is: {}".format(str(self.dim)))
         self.reset()
@@ -372,7 +412,9 @@ class MHBlockUpdates(object):
 
 class Mcmc(object):
     """
-    MCMC sampler.
+    MCMC sampler
+
+    Perform MCMC sampling given a Bayesian model
     """
 
     def __init__(self, model):
@@ -381,6 +423,64 @@ class Mcmc(object):
         self._main_rand = np.random.mtrand.RandomState()
 
     def sample(self, n, p0, h0, thin=1, burnin=0, sampling_method="block", temperatures=[1], tempering=False, cov_proposal=None, adaptcov=False, tune_throughout=True, tune_interval=1000, adaptation_delay=1000, adaptation_interval=200):
+        """
+        Sample Markov Chain
+
+        Fit the probability model using MCMC.
+
+        Arguments
+        ---------
+
+        n: integer
+            number of iterations (except burnin)
+
+        p0: numpy array
+            initial positions of the parameters. Dimension is (nb*nw, np), the number of lines is the number of blocks of variables (nb) times
+            the number of walkers (nw) used for each block; the number of columns is the number of parameters per bock (np)
+
+        h0: numpy array
+            initial positions of the hyperparameters.
+
+        thin (optional): integer
+            thinning parameter: the chain states is only saved every `thin` steps. Default is 1.
+
+        burnin (optional): integer
+            burn-in period: this iterations are done in the beggining of the sampling and then discarded. Default is 0.
+
+        sampling_method: "cycle" or "block" string
+            which sampling method to use. Cycle through the parameters, one-at-a-time or perform block updates.
+
+        temperatures (optional): list of floats between 1 and 0
+            temperatures to use for parallel tempering. The number of temperatures defines the number of walkers, so must
+            be consistent with p0. Default is [1].
+
+        tempering: boolean
+            whether to perform parallel tempering
+
+        cov_proposal (optional): numpy array
+            Covariance matrix of the proposal function when using "block" sampling method. Dimension is (np, np) where np
+            is the number of parameters. If using the adaptive covariance option this is only the initial value.
+            Default is None, which means it will be estimated from data.
+
+        adaptcov: boolean
+            whether to adapt the covariance matrix when using "block" sampling method
+
+        tune_throughout: boolean
+            whether to tune the the proposal function after the burnin period, when using the "cycle" sampling
+            method
+
+        tune_interval: integer
+            interval between successive tuning attempts (used by the "cycle" sampling method). Default is 1000.
+
+        adaptation_delay: integer
+            number of iterations before any attempt to tune the proposal covariance mtrix (used by the "block"
+            sampling method). Default is 1000.
+
+        adaptation_interval: integer
+            number of iterations between successive adaptions of the proposal covariance matrix (used by
+             the "block" sampling method). Default is 200
+        
+        """
         self.thin = int(thin)
         self.burnin = int(burnin)
         self.iterations = int(n) + self.burnin
@@ -407,7 +507,7 @@ class Mcmc(object):
         logger.info("There are {} blocks of variables, so running {} chains in total.".format(str(self.nblocks), str(self.nchains)))
         #logger.debug("Initial values for the chains are: {}".format(str(self.p)))
         #logger.debug("Inital value for the hyperparameter is {}".format(str(self.hyper)))
-        logger.debug("The indices of the blocks are: {}".format(str(self.blockidx)))
+        #logger.debug("The indices of the blocks are: {}".format(str(self.blockidx)))
         #logger.debug("Obtaining dimensions of the two parameter spaces...")
 
         self.getdim()
@@ -608,7 +708,7 @@ class Mcmc(object):
         #logger.debug("Computing priors with p = {} and hyper = {} ...".format(str(q), str(self.hyper)))
         newpriors = self.model.prior_terms(q, self.hyper)
         #logger.debug("Priors = {}".format(str(newpriors)))
-        new_positions = [self.walkers[j].step(q[j], self._temp_array[j] * (newlikes[j], self._temp_array[j] * newpriors[j])) for j in range(self.nchains)]
+        new_positions = [self.walkers[j].step(q[j], self._temp_array[j] * newlikes[j], self._temp_array[j] * newpriors[j]) for j in range(self.nchains)]
         new_p = [x[0] for x in new_positions]
         new_1 = [x[1] for x in new_positions]
         new_2 = [x[2] for x in new_positions]
