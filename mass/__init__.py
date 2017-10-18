@@ -20,6 +20,16 @@ with function computations done in parallel.
 * Option to do parallel tempering: run several chains per parameter block
 with different temperatures and do coupling updates
 
+Installation
+------------
+
+This package requires the package `mamuto` which can be found here [https://github.com/mdusilva/mamuto].
+To install do:
+
+```python
+python setup.py install
+```
+
 Usage
 -----
 

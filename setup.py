@@ -17,7 +17,7 @@ setup(
           "Topic :: Scientific/Engineering :: Astronomy"
 
       ],
-      install_requires = ["numpy"],
+      install_requires = ["numpy", "mamuto"],
       package_data = {
           '' : []
         },
