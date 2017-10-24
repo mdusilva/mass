@@ -90,7 +90,11 @@ class Trace(object):
 
     def averages(self):
         """Return the averages of the sample distributions"""
-        return np.average(self.trace, axis=0)    
+        return np.average(self.trace, axis=0)
+
+    def save(self, filename):
+        """Save trace to file"""
+        np.savetxt(filename, self.trace)
 
 class Model(object):
     """
@@ -615,13 +619,13 @@ class Mcmc(object):
         #logger.debug("Total log probs tempered = {}".format(str(self.likes+self.priors)))
         if  self.sampling_method == "cycle":
             self.walkers = [[MHSimpleUpdates(p[i,j], self.likes[i], self.priors[i]) for j in range(self.ndim)] for i in range(self.nchains)]
-            self.hyperwalkers = [MHSimpleUpdates(hyper[i], np.sum(self.priors), self.probhyp) for i in range(self.hdim)]
+            self.hyperwalkers = [MHSimpleUpdates(hyper[i], np.sum(self.priors[self.blockidx]), self.probhyp) for i in range(self.hdim)]
             #logger.debug("Initialized list of walkers with {} elements".format(str(len(self.walkers))))
             #logger.debug("Initialized list of hyper walkers with {} elements".format(str(len(self.hyperwalkers))))
             #self.walkers = [[MHSimpleUpdates(self.p[i,j], self.logprobs[i]) for i in range(self.nchains)] for j in range(self.ndim)]
         elif self.sampling_method == "block":
             self.walkers = [MHBlockUpdates(v_p, self.likes[i_p], self.priors[i_p], cov=self.cov_proposal) for v_p, i_p in zip(p, range(self.nchains))]
-            self.hyperwalkers = MHBlockUpdates(hyper, np.sum(self.priors), self.probhyp)
+            self.hyperwalkers = MHBlockUpdates(hyper, np.sum(self.priors[self.blockidx]), self.probhyp)
             #logger.debug("Initialized list of walkers with {} elements".format(str(len(self.walkers))))
             #logger.debug("Initialized list of hyper walkers with 1 element")
 
